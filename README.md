@@ -1,4 +1,4 @@
-This project has not been fully uploaded!
+This project has not been fully uploaded! (all files are not attached)
 
 1. Program decode encrypted .dbf file.
 2. The program is capable of reading .dbf files even without a .dfb key file (if the file is not encrypted).
