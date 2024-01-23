@@ -11,4 +11,4 @@ HTML
 CSS
 Electron/Node.js
 
-![alt text]([https://github.com/moxissiOfficial/sample_chart_gen/blob/main/main.png](https://github.com/moxissiOfficial/sample_chart_gen/blob/main/main.png)?raw=true)
+![Screenshot](main.png)
