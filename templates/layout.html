@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAMPLE</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static',filename='styles/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static',filename='styles/dropdown.css') }}"
+    />
+  </head>
+  <body onselectstart="return false">
+    <header></header>
+    <nav>
+      <ul id="menu">
+        <img
+          id="logo"
+          src="{{ url_for('static',filename='img/logo.png') }}"
+          alt="logo"
+        />
+        <li>
+          <a
+            href="{{ url_for('index') }}"
+            class="nav__link {{ 'nav__link--active' if request.path == url_for('index') }}"
+            draggable="false"
+            >Main</a
+          >
+        </li>
+        <li>
+          <a
+            href="{{ url_for('settings') }}"
+            class="nav__link {{ 'nav__link--active' if request.path == url_for('settings') }}"
+            draggable="false"
+            >Settings</a
+          >
+        </li>
+        <li>
+          <a
+            href="{{ url_for('user') }}"
+            class="nav__link {{ 'nav__link--active' if request.path == url_for('user') }}"
+            draggable="false"
+            >User</a
+          >
+        </li>
+        <div id="statusbar">Status: OK</div>
+      </ul>
+    </nav>
+    <script>
+      document.getElementById("logo").setAttribute("draggable", false);
+    </script>
+    <main>{% block content %}{% endblock %}</main>
+  </body>
+</html>

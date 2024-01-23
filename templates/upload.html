@@ -1,0 +1,292 @@
+{% extends "layout.html" %} {% block content %}
+<!-- Adding elements for file selection -->
+<div class="content-group">
+  <form action="/upload" method="post" enctype="multipart/form-data">
+    <label>Choose a file:</label>
+    <br />
+    <input type="file" name="files" accept=".dbf" multiple required />
+    <br />
+    <br />
+    <label>Choose IQRFSvr.dbf file:</label>
+    <br />
+    <input type="file" name="key_file" />
+    <br />
+    <input type="submit" value="Load" class="button-spaced" />
+  </form>
+</div>
+
+<!-- Adding elements to select time and date to create a note in the chart -->
+<div class="content-group">
+  <h2>Chart settings</h2>
+  <!-- Adding elements to set minimum and maximum view -->
+  <form id="chart_value_limits">
+    <label>Číslo testu:</label>
+    <input id="chart-label" type="text" />
+    <label>Název testu:</label>
+    <input id="chart-label" type="text" />
+    <br />
+    <label>Komentář:</label>
+    <input id="chart-label" type="text" />
+    <label>Měření číslo:</label>
+    <input id="chart-label" type="text" />
+    <br />
+    <label>Název grafu:</label>
+    <input id="chart-label" type="text" />
+    <br />
+    <br />
+    <label>Select minimum Y range:</label>
+    <input
+      id="value_min"
+      type="number"
+      step="any"
+      name="value_min"
+      style="width: 50px"
+    />
+    <label>Select maximum Y range:</label>
+    <input
+      id="value_max"
+      type="number"
+      step="any"
+      name="value_max"
+      size="10"
+      style="width: 50px"
+    />
+    <br />
+    <br />
+  </form>
+
+  <!-- Adding elements for setting minimum and maximum lines -->
+  <form id="chart_value_limits_acceptable">
+    <label>Maximální rozptyl:</label>
+    <input
+      id="acceptable_range"
+      type="number"
+      step="any"
+      name="value_min_acceptable"
+      style="width: 50px"
+    />
+    <br />
+    <br />
+    <label>Minimální teplota:</label>
+    <input
+      id="value_min_acceptable"
+      type="number"
+      step="any"
+      name="value_min_acceptable"
+      style="width: 50px"
+    />
+    <label>Maximální teplota:</label>
+    <input
+      id="value_max_acceptable"
+      type="number"
+      step="any"
+      name="value_max_acceptable"
+      style="width: 50px"
+    />
+    <br />
+    <br />
+  </form>
+
+  <!-- Adding time and date selection elements for chart time range -->
+  <form id="chart_start_end">
+    <label>Začátek měření:</label>
+    <input id="date_time_start" type="datetime-local" name="date_time_start" />
+    <br />
+    <label>Konec měření:</label>
+    <input id="date_time_end" type="datetime-local" name="date_time_end" />
+    <br />
+  </form>
+
+  <div id="list1" class="dropdown-check-list" tabindex="100">
+    <span id="anchor-dd">Vyber senzory</span>
+    <ul id="items" class="items"></ul>
+  </div>
+</div>
+
+<div class="content-group">
+  <h3>Annotations:</h3>
+  <form id="annotation_Form">
+    <label>Select datetime and annotation:</label>
+    <br />
+    <input id="date_time_input" type="datetime-local" name="date_time" />
+    <input id="annotation" type="text" name="annotation" />
+    <input type="button" value="Set" onclick="addAnnotation()" />
+  </form>
+
+  <!-- Notes List -->
+  <ul id="annotations-list"></ul>
+</div>
+
+<!-- Generate graph -->
+<button onclick="createChart()" class="button-spaced">Create chart</button>
+
+<script src="{{ url_for('static', filename='dropdown.js') }}"></script>
+
+<!-- JAVASCRIPT -->
+<script src="{{ url_for('static', filename='socket.io.js') }}"></script>
+
+<script>
+  var socket = io.connect("http://" + document.domain + ":" + location.port, {
+    transports: ["websocket"],
+    binaryType: "arraybuffer",
+  });
+
+  socket.on("loading", function (data) {
+    //console.log(data.message);
+    const status = document.getElementById("statusbar");
+    status.innerText = data;
+  });
+
+  //////////////////////
+  //Set date time range
+  //////////////////////
+  socket.on("first_last_timestamp_row", function (data) {
+    var firstRow = data.first_timestamp_row[0]["TIMESTAMP"];
+    var lastRow = data.last_timestamp_row[0]["TIMESTAMP"];
+    var min = firstRow;
+    var formatted_min = convert_date(min);
+    var max = lastRow;
+    var formatted_max = convert_date(max);
+    var dateTimeInput = document.getElementById("date_time_input"); //ANNOTATION
+    dateTimeInput.min = formatted_min;
+    dateTimeInput.max = formatted_max;
+    dateTimeInput.value = formatted_min;
+    var date_time_start = document.getElementById("date_time_start"); // CHART RANGE - START
+    date_time_start.min = formatted_min;
+    date_time_start.max = formatted_max;
+    date_time_start.value = formatted_min;
+    var date_time_end = document.getElementById("date_time_end"); // CHART RANGE - END
+    date_time_end.min = formatted_min;
+    date_time_end.max = formatted_max;
+    date_time_end.value = formatted_max;
+
+    function convert_date(date_time) {
+      var day = date_time.substring(0, 2);
+      var month = date_time.substring(3, 5);
+      var year = date_time.substring(6, 10);
+      var hours = date_time.substring(11, 13);
+      var minutes = date_time.substring(14, 16);
+      var seconds = date_time.substring(17, 19);
+
+      return year + "-" + month + "-" + day + "T" + hours + ":" + minutes;
+    }
+  });
+
+  // ////////////////
+  // Get sensor list
+  socket.on("sensor_list", function (data) {
+    //console.log(data.message);
+    const sensorList = document.getElementById("items");
+    sensorList.innerHTML = "";
+
+    data.message.forEach((item) => {
+      if (item != "TIMESTAMP") {
+        const sensorListItem = document.createElement("li");
+
+        const sensor = document.createElement("input");
+        sensor.type = "checkbox";
+        sensor.id = item;
+        sensor.className = "sensors";
+        sensor.className = "sensor-item";
+
+        sensorListItem.appendChild(sensor);
+
+        sensorListItem.appendChild(document.createTextNode(item));
+
+        sensorList.appendChild(sensorListItem);
+      }
+    });
+    const sensorListItem = document.createElement("li");
+
+    const sensor = document.createElement("input");
+
+    sensor.type = "checkbox";
+    sensor.id = "select-all";
+    sensor.className = "sensor-item-all";
+
+    sensorListItem.appendChild(sensor);
+
+    sensorListItem.appendChild(document.createTextNode("Select ALL"));
+
+    sensorList.appendChild(sensorListItem);
+
+    // Check all checkboxes are selected
+    const targetCheckboxes = document.querySelectorAll(".sensor-item");
+    const masterCheckbox = document.getElementById("select-all");
+    // Event listener for master checkbox
+    masterCheckbox.addEventListener("change", function () {
+      // Setting the state of all target checkboxes according to the state of the master checkbox
+      targetCheckboxes.forEach(function (checkbox) {
+        checkbox.checked = masterCheckbox.checked;
+      });
+    });
+  });
+
+  // ////////////////////////
+  // Update ANNOTATIONS list
+  socket.on("update_annotations", function (data) {
+    //console.log(data.message);
+    const annotationsList = document.getElementById("annotations-list");
+    annotationsList.innerHTML = "";
+    // Create a new element for each data record and put it in "annotationsList"
+    data.message.forEach((item) => {
+      const annotationItem = document.createElement("li");
+      annotationItem.textContent = `${item[0]} - ${item[1]}`;
+      annotationsList.appendChild(annotationItem);
+      const button = document.createElement(`button`);
+      button.textContent = "Odebrat";
+      button.id = `${item[0]}_${item[1]}`;
+      button.className = "annotation-button";
+      annotationItem.appendChild(button);
+
+      button.onclick = function () {
+        socket.emit("remove_annotation", { data: button.id });
+      };
+    });
+  });
+
+  // ///////////////
+  // Add ANNOTATION
+  function addAnnotation() {
+    var formData = {
+      date_time: document.getElementById("date_time_input").value,
+      annotation: document.getElementById("annotation").value,
+    };
+    socket.emit("add_annotation", { data: formData });
+  }
+
+  // /////////////////////
+  // Create CHART request
+  function createChart() {
+    var chart_label = document.getElementById("chart-label").value;
+    var chart_min_value = document.getElementById("value_min").value;
+    var chart_max_value = document.getElementById("value_max").value;
+    var chart_max_value = document.getElementById("value_max").value;
+    var chart_min_acceptable_value = document.getElementById(
+      "value_min_acceptable"
+    ).value;
+    var chart_max_acceptable_value = document.getElementById(
+      "value_max_acceptable"
+    ).value;
+    var chart_start_date = document.getElementById("date_time_start").value;
+    var chart_end_date = document.getElementById("date_time_end").value;
+    var chart_sensors = document.getElementsByClassName("sensor-item");
+    var chart_sensors_checked = [];
+
+    for (var sensor of chart_sensors) {
+      if (sensor.checked) chart_sensors_checked.push(sensor.id.toString());
+    }
+
+    socket.emit("create_chart", {
+      chart_label: chart_label,
+      chart_min_value: chart_min_value,
+      chart_max_value: chart_max_value,
+      chart_min_acceptable_value: chart_min_acceptable_value,
+      chart_max_acceptable_value: chart_max_acceptable_value,
+      chart_start_date: chart_start_date,
+      chart_end_date: chart_end_date,
+      chart_sensors: chart_sensors_checked,
+    });
+  }
+</script>
+{% endblock %}
